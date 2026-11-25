@@ -38,7 +38,7 @@ select t.fails($q$select public.accept_call(t.id('CALL1'))$q$, 'caller cannot ac
 select t.as_user('B');
 select t.works($q$select public.accept_call(t.id('CALL1'), 'device-1')$q$, 'callee accepts');
 select t.ok((select status = 'active' and started_at is not null from public.calls where id = t.id('CALL1')), 'call active after accept');
-select t.fails($q$select public.accept_call(t.id('CALL1'), 'device-2')$q$, 'second device cannot accept again');
+select t.ok((public.accept_call(t.id('CALL1'), 'device-2')).status = 'active', 'second accept returns current state');
 select t.ok((select device_id = 'device-1' from public.call_participants where call_id = t.id('CALL1') and user_id = t.id('B')), 'accepting device recorded');
 select t.works($q$select public.log_call_event(t.id('CALL1'), 'reconnecting')$q$, 'participant logs event');
 select t.fails($q$select public.log_call_event(t.id('CALL1'), 'evil')$q$, 'unknown event type rejected');
@@ -72,7 +72,7 @@ reset role;
 update public.calls set created_at = now() - interval '2 minutes' where id = t.id('CALL5');
 set role authenticated;
 select t.as_user('B');
-select t.fails($q$select public.accept_call(t.id('CALL5'))$q$, 'cannot accept an expired call');
+select t.ok((public.accept_call(t.id('CALL5'))).status = 'missed', 'accepting an expired call reports missed');
 select t.ok((select status = 'missed' from public.calls where id = t.id('CALL5')), 'stale ringing call becomes missed');
 
 -- ---------- history ----------

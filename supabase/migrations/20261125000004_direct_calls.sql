@@ -107,7 +107,9 @@ begin
   select * into v_call from public.calls where id = p_call for update;
   if v_call.id is null or not public.is_call_participant(p_call) then raise exception 'call not found'; end if;
   if v_call.initiator_id = v_me then raise exception 'cannot accept your own call'; end if;
-  if v_call.status <> 'ringing' then raise exception 'call is no longer available' using hint = v_call.status::text; end if;
+  -- Not raising here keeps expire_stale_calls()'s cleanup committed; the client
+  -- sees status <> 'active' and shows "call no longer available".
+  if v_call.status <> 'ringing' then return v_call; end if;
 
   update public.calls set status = 'active', started_at = now() where id = p_call returning * into v_call;
   update public.call_participants set status = 'joined', joined_at = now(), device_id = left(p_device, 64)
